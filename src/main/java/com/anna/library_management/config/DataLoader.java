@@ -4,6 +4,7 @@ import com.anna.library_management.entity.*;
 import com.anna.library_management.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
@@ -28,6 +29,9 @@ public class DataLoader implements CommandLineRunner {
     @Autowired
     private LoanRepository loanRepository;
 
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
     @Override
     public void run(String... args) throws Exception {
         // Тестовые данные загружаются только в пустую базу,
@@ -38,6 +42,7 @@ public class DataLoader implements CommandLineRunner {
         } else {
             System.out.println("Тестовые данные уже есть в базе, загрузка пропущена.");
         }
+        encodeLegacyPasswords();
         printDemo();
     }
 
@@ -81,14 +86,14 @@ public class DataLoader implements CommandLineRunner {
         // Создание пользователей
         User admin = new User();
         admin.setEmail("admin@library.com");
-        admin.setPassword("admin123");
+        admin.setPassword(passwordEncoder.encode("admin123"));
         admin.setFirstName("Администратор");
         admin.setLastName("Системы");
         admin.setCreatedAt(LocalDateTime.now());
 
         User librarian = new User();
         librarian.setEmail("librarian@library.com");
-        librarian.setPassword("librarian123");
+        librarian.setPassword(passwordEncoder.encode("librarian123"));
         librarian.setFirstName("Библиотекарь");
         librarian.setLastName("Главный");
         librarian.setCreatedAt(LocalDateTime.now());
@@ -102,6 +107,22 @@ public class DataLoader implements CommandLineRunner {
                 LocalDateTime.now().minusDays(16),
                 LoanStatus.ACTIVE);
         loanRepository.save(overdueLoan);
+    }
+
+    // Шифрование паролей, сохранённых ранее в открытом виде (BCrypt-хеши начинаются с "$2")
+    private void encodeLegacyPasswords() {
+        int count = 0;
+        for (User user : userRepository.findAll()) {
+            String password = user.getPassword();
+            if (password != null && !password.startsWith("$2")) {
+                user.setPassword(passwordEncoder.encode(password));
+                userRepository.save(user);
+                count++;
+            }
+        }
+        if (count > 0) {
+            System.out.println("Пароли пользователей зашифрованы (BCrypt): " + count);
+        }
     }
 
     // Демонстрация работы репозиториев (результат выводится в консоль)
@@ -125,6 +146,7 @@ public class DataLoader implements CommandLineRunner {
                 + userRepository.existsByEmail("admin@library.com"));
         System.out.println("Просроченных выдач: "
                 + loanRepository.findOverdueLoans(LocalDateTime.now()).size());
+        System.out.println("Для входа в API: admin@library.com / admin123");
     }
 
     private List<String> titles(List<Book> books) {
