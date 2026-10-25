@@ -1,6 +1,9 @@
 package com.anna.library_management.service.impl;
 
+import com.anna.library_management.dto.CreateBookDTO;
+import com.anna.library_management.entity.Author;
 import com.anna.library_management.entity.Book;
+import com.anna.library_management.entity.Category;
 import com.anna.library_management.repository.BookRepository;
 import com.anna.library_management.service.BookService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,16 +50,32 @@ public class BookServiceImpl implements BookService {
         return bookRepository.findByAuthorId(authorId);
     }
 
-    // Дополнительные методы
+    @Override
     public List<Book> findAvailableBooks() {
         return bookRepository.findByAvailableCopiesGreaterThan(0);
     }
 
+    @Override
     public Optional<Book> findByIsbn(String isbn) {
         return bookRepository.findByIsbn(isbn);
     }
 
+    @Override
     public List<Book> findOverdueBooks() {
         return bookRepository.findOverdueBooks();
+    }
+
+    // Метод для создания книги с автором и категорией
+    @Override
+    public Book createBookWithAuthorAndCategory(CreateBookDTO dto, Author author,
+                                                Category category) {
+        Book book = new Book();
+        book.setTitle(dto.getTitle());
+        book.setIsbn(dto.getIsbn());
+        book.setPublicationDate(dto.getPublicationDate());
+        book.setAvailableCopies(dto.getAvailableCopies());
+        book.setAuthor(author);
+        book.setCategory(category);
+        return save(book);
     }
 }
